@@ -1,0 +1,32 @@
+trigger: none
+pr:
+  - master
+
+resources:
+  - repo: self
+
+stages:
+  - stage: Review
+    displayName: Preview check, lint, and testing
+    jobs:
+      - job: Review
+        displayName: Review
+        pool:
+          vmImage: 'ubuntu-latest'
+        steps:
+          - bash: |
+              go version
+            displayName: Display go version
+
+          - bash: |
+              mkdir -p /home/vsts/.local/bin
+              curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b ~/.local/bin v1.55.2
+            displayName: Download and install golangci-lint
+
+          - bash: |
+              make fmt vet lint
+            displayName: Check, lint, and format code
+
+          - bash: |
+              make coverage
+            displayName: Test & code coverage

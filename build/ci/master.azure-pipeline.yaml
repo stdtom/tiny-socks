@@ -1,0 +1,54 @@
+trigger:
+  branches:
+    include:
+    - master
+pr: none
+
+resources:
+  - repo: self
+
+variables:
+  - name: imageName
+    value: tiny-socks
+  - group: containerReg
+
+stages:
+  - stage: Build
+    displayName: Build image
+    jobs:
+      - job: Build
+        displayName: Build
+        pool:
+          vmImage: 'ubuntu-latest'
+        steps:
+          # Build the container image
+          - task: Docker@2
+            inputs:
+              containerRegistry: 'GHCR service connection'
+              repository: '$(registryUsername)/$(imageName)'
+              command: 'build'
+              Dockerfile: '**/Dockerfile'
+              tags: |
+                $(Build.BuildId)
+                latest
+            displayName: Build and tag container image
+
+          # Login to containter registry
+          - task: Docker@2
+            inputs:
+              containerRegistry: 'GHCR service connection'
+              command: 'login'
+            displayName: Login to container registry
+            condition: and(succeeded(), eq(variables['build.sourceBranch'], 'refs/heads/master'))
+
+          # Push all tagged images to the container registry
+          - task: Docker@2
+            inputs:
+              containerRegistry: 'GHCR service connection'
+              repository: '$(registryUsername)/$(imageName)'
+              command: 'push'
+              tags: |
+                $(Build.BuildId)
+                latest
+            displayName: Push all tagged images to the container registry
+            condition: and(succeeded(), eq(variables['build.sourceBranch'], 'refs/heads/master'))
